@@ -6,44 +6,46 @@
       <span v-else class="icon-expand">+</span>
     </button>
 
-    <!-- 图标容器 -->
-    <transition name="slide">
-      <div v-if="isExpanded" class="icons-container">
-        <div
-          class="icon-item"
-          :class="{ 'icon-selected': selectedIcons.hotel }"
-          @click="handleIconClick('hotel')"
-        >
-          <div class="icon-wrapper">
-            <IconHotel />
-            <div v-if="selectedIcons.hotel" class="icon-slash"></div>
+    <!-- 图标容器 - 使用固定高度容器和绝对定位避免布局跳动 -->
+    <div class="icons-wrapper">
+      <transition name="fade">
+        <div v-if="isExpanded" class="icons-container">
+          <div
+            class="icon-item"
+            :class="{ 'icon-selected': selectedIcons.hotel }"
+            @click="handleIconClick('hotel')"
+          >
+            <div class="icon-wrapper">
+              <IconHotel />
+              <div v-if="selectedIcons.hotel" class="icon-slash"></div>
+            </div>
+            <span>酒店</span>
           </div>
-          <span>酒店</span>
-        </div>
-        <div
-          class="icon-item"
-          :class="{ 'icon-selected': selectedIcons.spot }"
-          @click="handleIconClick('spot')"
-        >
-          <div class="icon-wrapper">
-            <IconSpot />
-            <div v-if="selectedIcons.spot" class="icon-slash"></div>
+          <div
+            class="icon-item"
+            :class="{ 'icon-selected': selectedIcons.spot }"
+            @click="handleIconClick('spot')"
+          >
+            <div class="icon-wrapper">
+              <IconSpot />
+              <div v-if="selectedIcons.spot" class="icon-slash"></div>
+            </div>
+            <span>景点</span>
           </div>
-          <span>景点</span>
-        </div>
-        <div
-          class="icon-item"
-          :class="{ 'icon-selected': selectedIcons.transportation }"
-          @click="handleIconClick('transportation')"
-        >
-          <div class="icon-wrapper">
-            <IconTransportation />
-            <div v-if="selectedIcons.transportation" class="icon-slash"></div>
+          <div
+            class="icon-item"
+            :class="{ 'icon-selected': selectedIcons.transportation }"
+            @click="handleIconClick('transportation')"
+          >
+            <div class="icon-wrapper">
+              <IconTransportation />
+              <div v-if="selectedIcons.transportation" class="icon-slash"></div>
+            </div>
+            <span>交通</span>
           </div>
-          <span>交通</span>
         </div>
-      </div>
-    </transition>
+      </transition>
+    </div>
   </div>
 </template>
 
@@ -91,6 +93,8 @@ const emit = defineEmits<{
   position: relative;
   display: flex;
   align-items: center;
+  /* 固定布局高度，防止折叠/展开时引起页面跳动 */
+  height: 44px;
 }
 
 .folding-button {
@@ -107,6 +111,8 @@ const emit = defineEmits<{
   justify-content: center;
   transition: all 0.3s;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  /* 确保按钮垂直居中 */
+  flex-shrink: 0;
 }
 
 .folding-button:hover {
@@ -118,12 +124,38 @@ const emit = defineEmits<{
 .icon-close {
   line-height: 1;
   position: relative;
-  top: -1px;
+  /* 调整垂直位置使图标居中 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  top: 0; /* 统一设置为0，确保两个图标都居中 */
+}
+
+/* 添加图标容器包装器，保持一致的高度和布局 */
+.icons-wrapper {
+  position: relative;
+  height: 44px;
+  margin-left: 15px;
+  overflow: visible;
+  flex-grow: 1;
+  display: flex;
+  align-items: center;
 }
 
 .icons-container {
   display: flex;
-  margin-left: 15px;
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 5;
+  /* 添加背景提升视觉效果 */
+  background-color: rgba(255, 255, 255, 0.9);
+  border-radius: 20px;
+  padding: 4px 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .icon-item {
@@ -149,8 +181,8 @@ const emit = defineEmits<{
 }
 
 .icon-item svg {
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
 }
 
 .icon-slash {
@@ -164,19 +196,33 @@ const emit = defineEmits<{
 }
 
 .icon-item span {
-  margin-top: 4px;
+  margin-top: 2px;
   font-size: 11px;
+  font-weight: 500;
 }
 
-/* 过渡动画 */
-.slide-enter-active,
-.slide-leave-active {
-  transition: all 0.3s ease;
+/* 淡入淡出动画 - 替代滑动，防止布局变化 */
+.fade-enter-active,
+.fade-leave-active {
+  transition:
+    opacity 0.25s ease,
+    transform 0.25s ease;
 }
 
-.slide-enter-from,
-.slide-leave-to {
-  transform: translateX(-20px);
+.fade-enter-from,
+.fade-leave-to {
   opacity: 0;
+  transform: translateY(-50%) scale(0.95);
+}
+
+/* 暗模式适配 */
+@media (prefers-color-scheme: dark) {
+  .icons-container {
+    background-color: rgba(50, 50, 50, 0.9);
+  }
+
+  .icon-item span {
+    color: #eee;
+  }
 }
 </style>

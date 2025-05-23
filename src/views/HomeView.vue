@@ -1,9 +1,22 @@
 <script setup lang="ts">
-import { ref, watch, nextTick } from 'vue'
-import FoldingButton from '@/components/FoldingButton.vue'
+import { ref, watch, onMounted, provide, computed, onBeforeUnmount } from 'vue'
+import type { Hotel, Spot, Transportation, TravelPlan, PlanItem } from '../types/travel'
+import { hotels, spots, transportations } from '../data/mockData'
+import TravelMap from '@/components/TravelMap.vue'
+import PlanList from '@/components/PlanList.vue'
+import DragGhost from '@/components/DragGhost.vue'
 import IconHotel from '@/components/icons/IconHotel.vue'
 import IconSpot from '@/components/icons/IconSpot.vue'
 import IconTransportation from '@/components/icons/IconTransportation.vue'
+
+import '../styles/homeStyles.css'
+
+// App状态
+const isLoading = ref(true)
+const hasNetworkError = ref(false)
+const isOnline = ref(navigator.onLine)
+const hasUnsavedChanges = ref(false)
+const showMobileTips = ref(true) // 控制移动端提示显示
 
 // 控制内容的显示状态
 const showHotels = ref(true)
@@ -18,63 +31,9 @@ const togglePlan = () => {
   isPlanExpanded.value = !isPlanExpanded.value
 }
 
-// 定义类型
-interface Position {
-  x: number // 百分比位置
-  y: number // 百分比位置
-}
-
-interface Hotel {
-  id: number
-  name: string
-  location: string
-  price: string
-  position: Position
-}
-
-interface Spot {
-  id: number
-  name: string
-  location: string
-  rating: number
-  position: Position
-}
-
-interface Transportation {
-  id: number
-  type: string
-  route: string
-  frequency: string
-  position: Position
-}
-
-// 模拟数据
-const hotels: Hotel[] = [
-  { id: 1, name: '海景酒店', location: '市中心', price: '¥680/晚', position: { x: 25, y: 35 } },
-  { id: 2, name: '山顶度假村', location: '山区', price: '¥520/晚', position: { x: 75, y: 20 } },
-]
-
-const spots: Spot[] = [
-  { id: 1, name: '历史博物馆', location: '东部', rating: 4.5, position: { x: 65, y: 40 } },
-  { id: 2, name: '海滩公园', location: '南部', rating: 4.7, position: { x: 30, y: 70 } },
-  { id: 3, name: '古城墙', location: '西部', rating: 4.3, position: { x: 15, y: 55 } },
-]
-
-const transportations: Transportation[] = [
-  { id: 1, type: '公交', route: '1路', frequency: '每15分钟一班', position: { x: 40, y: 45 } },
-  { id: 2, type: '地铁', route: 'A线', frequency: '每10分钟一班', position: { x: 55, y: 65 } },
-]
-
-// 选中的项目（旅游清单）
-const selectedPlan = ref<{
-  hotels: Hotel[]
-  spots: Spot[]
-  transportations: Transportation[]
-}>({
-  hotels: [],
-  spots: [],
-  transportations: [],
-})
+// 记录当前活跃的提示框
+const activeTooltipType = ref<string | null>(null)
+const activeTooltipId = ref<number | null>(null)
 
 // 处理过滤器变化
 const handleFilterChange = (payload: { type: string; selected: boolean }) => {
@@ -88,394 +47,839 @@ const handleFilterChange = (payload: { type: string; selected: boolean }) => {
   }
 }
 
-// 检查项目是否已被选中
-const isItemSelected = (type: string, id: number): boolean => {
-  if (type === 'hotel') {
-    return selectedPlan.value.hotels.some((hotel) => hotel.id === id)
-  } else if (type === 'spot') {
-    return selectedPlan.value.spots.some((spot) => spot.id === id)
-  } else if (type === 'transportation') {
-    return selectedPlan.value.transportations.some((transport) => transport.id === id)
-  }
-  return false
-}
-
-// 切换选择状态 - 确保所有类型总共只有一个图标被选中
+// 切换选择状态
 const toggleSelectItem = (type: string, item: Hotel | Spot | Transportation, event?: Event) => {
-  // 检查当前点击的图标是否已经选中
-  let isCurrentlySelected = false
-  let itemId: number = 0
+  // 阻止事件冒泡，防止触发地图的点击事件
+  event?.stopPropagation()
 
-  if (type === 'hotel') {
-    const hotel = item as Hotel
-    itemId = hotel.id
-    isCurrentlySelected = selectedPlan.value.hotels.some((h) => h.id === hotel.id)
-  } else if (type === 'spot') {
-    const spot = item as Spot
-    itemId = spot.id
-    isCurrentlySelected = selectedPlan.value.spots.some((s) => s.id === spot.id)
-  } else if (type === 'transportation') {
-    const transport = item as Transportation
-    itemId = transport.id
-    isCurrentlySelected = selectedPlan.value.transportations.some((t) => t.id === transport.id)
-  }
-
-  // 如果当前图标已经选中，则取消选中
-  if (isCurrentlySelected) {
-    // 清空所有选中状态，并使用nextTick确保DOM更新
-    selectedPlan.value.hotels = []
-    selectedPlan.value.spots = []
-    selectedPlan.value.transportations = []
-
-    // 使用nextTick确保DOM已更新
-    nextTick(() => {
-      // 此时DOM已更新，所有marker-selected类都已被移除
-      console.log('已取消选中:', type, itemId)
-    })
-
-    // 阻止事件冒泡，防止触发地图的点击事件
-    event?.stopPropagation()
+  // 确保 item 不是 undefined
+  if (!item) {
+    console.error('toggleSelectItem 收到了 undefined 项目')
     return
   }
 
-  // 先清空所有选中状态
-  selectedPlan.value.hotels = []
-  selectedPlan.value.spots = []
-  selectedPlan.value.transportations = []
+  const itemId = item.id
+  console.log('toggleSelectItem 被调用:', type, itemId, item)
 
-  // 选中当前点击的图标
-  if (type === 'hotel') {
-    selectedPlan.value.hotels = [item as Hotel]
-  } else if (type === 'spot') {
-    selectedPlan.value.spots = [item as Spot]
-  } else if (type === 'transportation') {
-    selectedPlan.value.transportations = [item as Transportation]
+  // 如果点击的是已经选中的图标，则清除选中状态
+  if (activeTooltipType.value === type && activeTooltipId.value === itemId) {
+    activeTooltipType.value = null
+    activeTooltipId.value = null
+    console.log('已取消选中:', type, itemId)
+    return
   }
 
-  // 使用nextTick确保DOM已更新
-  nextTick(() => {
-    console.log('已选中:', type, itemId)
-  })
+  // 选中当前点击的图标
+  activeTooltipType.value = type
+  activeTooltipId.value = itemId
+  console.log('已选中:', type, itemId, '当前状态:', activeTooltipType.value, activeTooltipId.value)
+}
 
-  // 阻止事件冒泡，防止触发地图的点击事件
-  event?.stopPropagation()
+// 拖拽相关状态
+const isDragging = ref(false)
+const draggedItem = ref<Hotel | Spot | Transportation | null>(null)
+const draggedItemType = ref<string | null>('hotel') // 初始给一个默认值，避免类型检查错误
+const dragPosition = ref({ x: 0, y: 0 })
+const dragOffset = ref({ x: 0, y: 0 })
+
+// 旅游清单
+const planItems = ref<TravelPlan>({
+  items: [],
+})
+
+// 生成唯一ID和获取下一个排序顺序
+const getNextSortOrder = () => {
+  return planItems.value.items.length > 0
+    ? Math.max(...planItems.value.items.map((item) => item.sortOrder)) + 1
+    : 0
+}
+
+// 检测是否为移动设备
+const isMobileDevice = ref(false)
+// 用户是否已经与页面交互的标记
+const userHasInteracted = ref(false)
+
+// 记录用户交互状态
+const markUserInteraction = () => {
+  userHasInteracted.value = true
+}
+
+// 提供视觉反馈的函数
+const provideVisualFeedback = () => {
+  try {
+    // 检查是否已存在反馈元素
+    const existingFeedback = document.querySelector('.visual-feedback')
+    if (existingFeedback) {
+      return // 避免创建多个反馈元素
+    }
+
+    // 创建临时元素显示反馈
+    const feedback = document.createElement('div')
+    feedback.className = 'visual-feedback'
+    document.body.appendChild(feedback)
+
+    // 0.5秒后移除
+    setTimeout(() => {
+      if (feedback.parentNode) {
+        feedback.parentNode.removeChild(feedback)
+      }
+    }, 500)
+  } catch (error) {
+    console.error('提供视觉反馈时出错:', error)
+  }
+}
+
+// 将函数提供给子组件
+provide('markUserInteraction', markUserInteraction)
+provide('userHasInteracted', userHasInteracted)
+provide('provideVisualFeedback', provideVisualFeedback)
+
+// App状态持久化
+const persistAppState = () => {
+  try {
+    const stateToSave = {
+      planItems: planItems.value,
+      lastSaved: new Date().toISOString(),
+    }
+    localStorage.setItem('travel-plan', JSON.stringify(stateToSave))
+    hasUnsavedChanges.value = false
+    console.log('旅行计划已保存到本地存储')
+  } catch (e) {
+    console.error('保存到本地存储失败:', e)
+  }
+}
+
+// 自动保存计划（使用去抖动处理）
+let saveTimeout: number | null = null
+const debouncedSave = () => {
+  hasUnsavedChanges.value = true
+
+  if (saveTimeout) {
+    clearTimeout(saveTimeout)
+  }
+
+  saveTimeout = window.setTimeout(() => {
+    persistAppState()
+  }, 3000) // 3秒后自动保存
+}
+
+// 保存计划到localStorage - 简化版本，避免重复逻辑
+const saveToLocalStorage = () => {
+  // 只设置标记，实际保存由 debouncedSave 完成
+  hasUnsavedChanges.value = true
+  debouncedSave()
+}
+
+// 监听计划变化，自动保存
+watch(
+  () => planItems.value,
+  () => {
+    debouncedSave()
+  },
+  { deep: true },
+)
+
+// 网络状态变化处理
+const handleNetworkChange = () => {
+  isOnline.value = navigator.onLine
+
+  if (isOnline.value && hasUnsavedChanges.value) {
+    // 重新联网时，尝试将本地数据同步到服务器（未来功能）
+    persistAppState()
+  }
+}
+
+// 开始拖拽
+const startDrag = (
+  type: string,
+  item: Hotel | Spot | Transportation,
+  event: MouseEvent | TouchEvent,
+) => {
+  // 确保 item 不是 undefined
+  if (!item) {
+    console.error('startDrag 收到了 undefined 项目')
+    return
+  }
+
+  // 记录用户已交互
+  markUserInteraction()
+
+  // 阻止事件冒泡和默认行为
+  event.stopPropagation()
+  event.preventDefault()
+
+  // 记录被拖拽的项目
+  draggedItem.value = item
+  draggedItemType.value = type
+  isDragging.value = true
+
+  // 对于长按触发的拖拽，由于没有实际的触摸位置，
+  // 我们使用标记在屏幕上的位置作为初始拖拽位置
+  const markerId = `marker-${type}-${item.id}`
+  const markerElement = document.getElementById(markerId)
+
+  let clientX: number, clientY: number
+  let rect: DOMRect
+
+  // 获取标记元素的位置
+  if (markerElement) {
+    rect = markerElement.getBoundingClientRect()
+
+    // 如果是触摸事件且有有效的触摸位置
+    if ('touches' in event && event.touches.length > 0) {
+      clientX = event.touches[0].clientX
+      clientY = event.touches[0].clientY
+    } else if ('clientX' in event) {
+      // 鼠标事件
+      clientX = event.clientX
+      clientY = event.clientY
+    } else {
+      // 没有事件坐标，使用标记中心位置
+      clientX = rect.left + rect.width / 2
+      clientY = rect.top + rect.height / 2
+    }
+
+    // 记录鼠标/触摸点与元素左上角的偏移量
+    dragOffset.value = {
+      x: clientX - rect.left,
+      y: clientY - rect.top,
+    }
+
+    // 设置初始拖拽位置
+    dragPosition.value = {
+      x: clientX - dragOffset.value.x,
+      y: clientY - dragOffset.value.y,
+    }
+
+    // 提供视觉反馈
+    provideVisualFeedback()
+
+    // 添加移动和结束事件监听器
+    document.addEventListener('mousemove', handleDragMove)
+    document.addEventListener('touchmove', handleDragMove, { passive: false })
+    document.addEventListener('mouseup', handleDragEnd)
+    document.addEventListener('touchend', handleDragEnd, { passive: true })
+  } else {
+    console.error('无法找到标记元素:', markerId)
+    isDragging.value = false
+    draggedItem.value = null
+    draggedItemType.value = null
+  }
+}
+
+// 处理拖拽移动
+const handleDragMove = (event: MouseEvent | TouchEvent) => {
+  if (!isDragging.value || !draggedItem.value) return
+
+  let clientX: number, clientY: number
+
+  // 兼容鼠标事件和触摸事件
+  if ('touches' in event && event.touches.length > 0) {
+    clientX = event.touches[0].clientX
+    clientY = event.touches[0].clientY
+    // 防止页面滚动
+    event.preventDefault()
+  } else if ('clientX' in event && 'clientY' in event) {
+    clientX = event.clientX
+    clientY = event.clientY
+  } else {
+    // 无法获取位置数据，忽略此次移动
+    return
+  }
+
+  // 更新拖拽位置
+  dragPosition.value = {
+    x: clientX - dragOffset.value.x,
+    y: clientY - dragOffset.value.y,
+  }
+}
+
+// 处理拖拽结束
+const handleDragEnd = (event: MouseEvent | TouchEvent) => {
+  if (!isDragging.value) return
+
+  try {
+    // 检查是否拖拽到了旅游清单区域
+    const rightPanel = document.querySelector('.right-panel') as HTMLElement
+    if (rightPanel) {
+      const rect = rightPanel.getBoundingClientRect()
+      let clientX: number, clientY: number
+
+      // 兼容鼠标事件和触摸事件
+      if ('changedTouches' in event && event.changedTouches.length > 0) {
+        clientX = event.changedTouches[0].clientX
+        clientY = event.changedTouches[0].clientY
+      } else if ('clientX' in event) {
+        clientX = event.clientX
+        clientY = event.clientY
+      } else {
+        // 无法获取位置信息，结束处理
+        return
+      }
+
+      // 判断释放位置是否在旅游清单区域内
+      if (
+        clientX >= rect.left &&
+        clientX <= rect.right &&
+        clientY >= rect.top &&
+        clientY <= rect.bottom &&
+        draggedItem.value
+      ) {
+        // 添加到旅游清单
+        addToPlan()
+      }
+    }
+  } catch (error) {
+    console.error('拖拽结束处理出错:', error)
+  } finally {
+    // 重置拖拽状态
+    isDragging.value = false
+    draggedItemType.value = 'hotel' // 重置为默认值
+    draggedItem.value = null
+
+    // 移除事件监听器
+    document.removeEventListener('mousemove', handleDragMove)
+    document.removeEventListener('touchmove', handleDragMove)
+    document.removeEventListener('mouseup', handleDragEnd)
+    document.removeEventListener('touchend', handleDragEnd)
+  }
+}
+
+// 直接添加项目到行程(从地图标记)
+const addItemToPlan = (type: string, item: Hotel | Spot | Transportation) => {
+  try {
+    // 验证类型是否有效
+    if (!['hotel', 'spot', 'transportation'].includes(type)) {
+      console.warn('无效的项目类型:', type)
+      return
+    }
+
+    // 创建一个新的计划项
+    const newPlanItem: PlanItem = {
+      id: `${type}-${item.id}-${Date.now()}`, // 使用时间戳确保唯一性
+      type: type as 'hotel' | 'spot' | 'transportation',
+      originalId: item.id,
+      sortOrder: getNextSortOrder(),
+      data: item,
+    }
+
+    // 添加到数组中
+    planItems.value.items.push(newPlanItem)
+
+    // 提供视觉反馈
+    provideVisualFeedback()
+
+    // 保存到本地存储
+    saveToLocalStorage()
+
+    console.log('已直接添加到行程:', type, item.id)
+  } catch (error) {
+    console.error('添加项目时出错:', error)
+  }
+}
+
+// 添加项目到旅游清单
+const addToPlan = () => {
+  if (!draggedItem.value || !draggedItemType.value) {
+    console.warn('无法添加项目：拖拽信息不完整')
+    return
+  }
+
+  try {
+    const item = draggedItem.value
+    const type = draggedItemType.value
+
+    // 验证类型是否有效
+    if (!['hotel', 'spot', 'transportation'].includes(type)) {
+      console.warn('无效的项目类型:', type)
+      return
+    }
+
+    // 创建一个新的计划项，允许重复添加
+    const newPlanItem: PlanItem = {
+      id: `${type}-${item.id}-${Date.now()}`, // 使用时间戳确保唯一性
+      type: type as 'hotel' | 'spot' | 'transportation',
+      originalId: item.id,
+      sortOrder: getNextSortOrder(),
+      data: item,
+    }
+
+    // 添加到数组中
+    planItems.value.items.push(newPlanItem)
+
+    // 添加项目时提供成功反馈
+    provideVisualFeedback()
+
+    // 保存到本地存储
+    saveToLocalStorage()
+  } catch (error) {
+    console.error('添加项目时出错:', error)
+  }
+}
+
+// 从旅游清单中移除项目
+const removeFromPlan = (id: string) => {
+  planItems.value.items = planItems.value.items.filter((item) => item.id !== id)
+  // 保存到本地存储
+  saveToLocalStorage()
+}
+
+// 更新计划项排序
+const updatePlanItemOrder = (newOrder: string[]) => {
+  // 根据新的顺序ID数组更新排序值
+  newOrder.forEach((id, index) => {
+    const item = planItems.value.items.find((item) => item.id === id)
+    if (item) {
+      item.sortOrder = index
+    }
+  })
+  // 对数组排序
+  planItems.value.items.sort((a, b) => a.sortOrder - b.sortOrder)
+
+  // 保存到本地存储
+  saveToLocalStorage()
+}
+
+// 清空旅游清单
+const clearPlan = () => {
+  planItems.value.items = []
+  // 保存到本地存储
+  saveToLocalStorage()
 }
 
 // 保存计划
 const savePlan = () => {
-  // 这里可以实现将计划保存到本地存储或发送到服务器
-  alert('计划已保存！')
-  console.log('保存的计划:', JSON.stringify(selectedPlan.value))
-}
+  // 使用优化后的持久化函数保存数据
+  persistAppState()
 
-// 清空计划
-const clearPlan = () => {
-  selectedPlan.value.hotels = []
-  selectedPlan.value.spots = []
-  selectedPlan.value.transportations = []
+  // 提供视觉反馈
+  const saveButton = document.querySelector('.save-btn') as HTMLElement
+  if (saveButton) {
+    const originalText = saveButton.textContent
+    const originalBackground = saveButton.style.backgroundColor
+
+    saveButton.textContent = '✓ 已保存'
+    saveButton.style.backgroundColor = '#45a049'
+
+    // 2秒后恢复按钮原始状态
+    setTimeout(() => {
+      saveButton.textContent = originalText
+      saveButton.style.backgroundColor = originalBackground
+    }, 2000)
+  }
 }
 
 // 清除地图上所有标记的选中状态
 const clearSelection = () => {
-  selectedPlan.value.hotels = []
-  selectedPlan.value.spots = []
-  selectedPlan.value.transportations = []
+  activeTooltipType.value = null
+  activeTooltipId.value = null
 }
+
+// 添加页面重载方法
+const reloadPage = () => {
+  window.location.reload()
+}
+
+// 监听触摸触发事件
+const handleTouchStart = (e: TouchEvent) => {
+  // 触摸处理逻辑...
+}
+
+// 清单和非清单项目的分类计数
+const itemCounts = computed(() => {
+  return {
+    hotels: planItems.value.items.filter((item) => item.type === 'hotel').length,
+    spots: planItems.value.items.filter((item) => item.type === 'spot').length,
+    transportation: planItems.value.items.filter((item) => item.type === 'transportation').length,
+  }
+})
+
+// 应用初始化
+onMounted(async () => {
+  // 显示加载状态
+  isLoading.value = true
+
+  try {
+    // 模拟从API加载数据的过程
+    await new Promise((resolve) => setTimeout(resolve, 500))
+
+    // 检测触摸能力
+    isMobileDevice.value = 'ontouchstart' in window || navigator.maxTouchPoints > 0
+
+    // 设置移动端提示15秒后自动隐藏
+    if (isMobileDevice.value) {
+      setTimeout(() => {
+        showMobileTips.value = false
+      }, 15000)
+    }
+
+    // 初始化拖拽区域
+    const mapContainer = document.querySelector('.map-container')
+    if (mapContainer) {
+      // 禁用上下文菜单，而不是使用preventDefault
+      mapContainer.addEventListener('contextmenu', (e) => e.preventDefault(), { passive: false })
+      mapContainer.addEventListener('touchstart', handleTouchStart as EventListener, {
+        passive: true,
+      })
+    }
+
+    // 添加全局用户交互监听 - 使用捕获阶段确保最早捕获用户交互
+    const markInteraction = () => {
+      userHasInteracted.value = true
+      console.log('用户已交互，启用振动功能')
+    }
+
+    document.addEventListener('touchstart', markInteraction as EventListener, {
+      once: true,
+      passive: true,
+      capture: true,
+    })
+
+    // 特别为移动设备添加触摸监听
+    if (isMobileDevice.value) {
+      document.body.addEventListener(
+        'touchstart',
+        () => {
+          userHasInteracted.value = true
+        },
+        { once: true, passive: true },
+      )
+    }
+
+    // 添加离线状态监听
+    window.addEventListener('online', handleNetworkChange)
+    window.addEventListener('offline', handleNetworkChange)
+
+    // 尝试从本地存储加载保存的旅游计划
+    try {
+      const savedData = localStorage.getItem('travel-plan')
+      if (savedData) {
+        const parsed = JSON.parse(savedData)
+
+        // 处理新版本数据格式
+        if (parsed.planItems?.items) {
+          planItems.value = parsed.planItems
+        }
+        // 处理旧版本数据格式
+        else if (parsed.items) {
+          planItems.value = parsed
+        }
+        // 处理更早的数据格式
+        else if (parsed.hotels || parsed.spots || parsed.transportations) {
+          // 将旧格式转换为新格式
+          const newItems: PlanItem[] = []
+          let sortOrder = 0
+
+          parsed.hotels?.forEach((hotel: Hotel) => {
+            newItems.push({
+              id: `hotel-${hotel.id}-${Date.now() + sortOrder}`,
+              type: 'hotel',
+              originalId: hotel.id,
+              sortOrder: sortOrder++,
+              data: hotel,
+            })
+          })
+
+          parsed.spots?.forEach((spot: Spot) => {
+            newItems.push({
+              id: `spot-${spot.id}-${Date.now() + sortOrder}`,
+              type: 'spot',
+              originalId: spot.id,
+              sortOrder: sortOrder++,
+              data: spot,
+            })
+          })
+
+          parsed.transportations?.forEach((trans: Transportation) => {
+            newItems.push({
+              id: `transportation-${trans.id}-${Date.now() + sortOrder}`,
+              type: 'transportation',
+              originalId: trans.id,
+              sortOrder: sortOrder++,
+              data: trans,
+            })
+          })
+
+          planItems.value.items = newItems
+        }
+      }
+    } catch (e) {
+      console.error('从本地存储加载失败:', e)
+    }
+  } catch (error) {
+    console.error('初始化失败:', error)
+    hasNetworkError.value = true
+  } finally {
+    // 加载状态隐藏时添加动画
+    setTimeout(() => {
+      isLoading.value = false
+    }, 800)
+  }
+})
+
+// 组件卸载前清理
+onBeforeUnmount(() => {
+  // 卸载前保存状态
+  persistAppState()
+
+  // 移除事件监听器
+  window.removeEventListener('online', handleNetworkChange)
+  window.removeEventListener('offline', handleNetworkChange)
+
+  // 清理任何定时器
+  if (saveTimeout) {
+    clearTimeout(saveTimeout)
+  }
+})
 </script>
 
 <template>
   <div class="home">
-    <!-- 左栏：地图上显示景点、酒店和交通 -->
-    <div class="left-panel">
-      <!-- 左上角的折叠按钮控件 -->
-      <div class="control-panel">
-        <FoldingButton @filter-change="handleFilterChange" />
-      </div>
-
-      <!-- 地图容器 -->
-      <div class="map-container" @click="clearSelection">
-        <!-- 地图背景 -->
-        <div class="map-background"></div>
-
-        <!-- 酒店标记 -->
-        <div
-          v-if="showHotels"
-          v-for="hotel in hotels"
-          :key="hotel.id"
-          class="map-marker hotel-marker"
-          :style="{ left: hotel.position.x + '%', top: hotel.position.y + '%' }"
-          :class="{ 'marker-selected': isItemSelected('hotel', hotel.id) }"
-          @click.stop="toggleSelectItem('hotel', hotel, $event)"
-        >
-          <div class="marker-icon hotel-icon">
-            <IconHotel />
-          </div>
-          <div class="marker-tooltip" :class="{ 'tooltip-left': hotel.position.x > 70 }">
-            <h3>{{ hotel.name }}</h3>
-            <p>位置: {{ hotel.location }}</p>
-            <p>价格: {{ hotel.price }}</p>
-          </div>
-        </div>
-
-        <!-- 景点标记 -->
-        <div
-          v-if="showSpots"
-          v-for="spot in spots"
-          :key="spot.id"
-          class="map-marker spot-marker"
-          :style="{ left: spot.position.x + '%', top: spot.position.y + '%' }"
-          :class="{ 'marker-selected': isItemSelected('spot', spot.id) }"
-          @click.stop="toggleSelectItem('spot', spot, $event)"
-        >
-          <div class="marker-icon spot-icon">
-            <IconSpot />
-          </div>
-          <div
-            class="marker-tooltip"
-            :class="{ 'tooltip-left': spot.position.x > 70, 'tooltip-top': spot.position.y > 70 }"
-          >
-            <h3>{{ spot.name }}</h3>
-            <p>位置: {{ spot.location }}</p>
-            <p>评分: {{ spot.rating }}/5</p>
-          </div>
-        </div>
-
-        <!-- 交通标记 -->
-        <div
-          v-if="showTransportation"
-          v-for="transport in transportations"
-          :key="transport.id"
-          class="map-marker transportation-marker"
-          :style="{ left: transport.position.x + '%', top: transport.position.y + '%' }"
-          :class="{ 'marker-selected': isItemSelected('transportation', transport.id) }"
-          @click.stop="toggleSelectItem('transportation', transport, $event)"
-        >
-          <div class="marker-icon transportation-icon">
-            <IconTransportation />
-          </div>
-          <div
-            class="marker-tooltip"
-            :class="{
-              'tooltip-left': transport.position.x > 70,
-              'tooltip-top': transport.position.y > 70,
-            }"
-          >
-            <h3>{{ transport.type }} - {{ transport.route }}</h3>
-            <p>频率: {{ transport.frequency }}</p>
-          </div>
-        </div>
-      </div>
+    <!-- 加载状态 -->
+    <div v-if="isLoading" class="loading-overlay">
+      <div class="loading-spinner"></div>
+      <p>加载中...</p>
     </div>
 
-    <!-- 右栏：旅游规划清单（暂时不实现具体功能） -->
-    <div class="right-panel">
-      <div class="plan-header">
-        <h2>旅游清单</h2>
-      </div>
-      <div class="plan-content">
-        <div class="empty-plan-message">行程规划清单功能开发中...</div>
-      </div>
+    <!-- 离线状态提示 -->
+    <div v-if="!isOnline" class="offline-notice">
+      <span>网络连接不可用，当前使用本地数据</span>
+    </div>
+
+    <!-- 网络错误提示 -->
+    <div v-if="hasNetworkError" class="error-notice">
+      <span>加载数据时出现问题</span>
+      <button @click="reloadPage">重试</button>
+    </div>
+
+    <!-- 左栏：地图上显示景点、酒店和交通 -->
+    <TravelMap
+      :hotels="hotels"
+      :spots="spots"
+      :transportations="transportations"
+      :show-hotels="showHotels"
+      :show-spots="showSpots"
+      :show-transportation="showTransportation"
+      :active-tooltip-type="activeTooltipType"
+      :active-tooltip-id="activeTooltipId"
+      :plan-items="planItems"
+      @filter-change="handleFilterChange"
+      @toggle-select-item="toggleSelectItem"
+      @start-drag="startDrag"
+      @clear-selection="clearSelection"
+      @add-item-to-plan="addItemToPlan"
+    />
+
+    <!-- 右栏：旅游清单 -->
+    <PlanList
+      :plan-items="planItems"
+      :is-expanded="isPlanExpanded"
+      @toggle-plan="togglePlan"
+      @remove-item="removeFromPlan"
+      @clear-plan="clearPlan"
+      @save-plan="savePlan"
+      @update-order="updatePlanItemOrder"
+    />
+
+    <!-- 拖拽虚影 -->
+    <DragGhost
+      :type="draggedItemType as 'hotel' | 'spot' | 'transportation'"
+      :position="dragPosition"
+      :is-dragging="isDragging"
+    >
+      <IconHotel v-if="draggedItemType === 'hotel'" />
+      <IconSpot v-if="draggedItemType === 'spot'" />
+      <IconTransportation v-if="draggedItemType === 'transportation'" />
+    </DragGhost>
+
+    <!-- 移动端操作提示 -->
+    <div v-if="isMobileDevice && showMobileTips" class="mobile-tips">
+      <button class="close-tips-btn" @click="showMobileTips = false">×</button>
+      <p>点击图标：查看详情</p>
+      <p>长按图标：拖拽到清单</p>
+      <p>长按清单项：调整顺序</p>
     </div>
   </div>
 </template>
 
-<style scoped>
-.home {
-  width: 100%;
-  height: 100vh;
-  display: flex;
-  background-color: #f5f7fa;
-  color: #333;
-  overflow: hidden;
-}
-
-/* 左侧地图面板样式 */
-.left-panel {
-  flex: 3;
-  position: relative;
-  overflow: hidden;
-}
-
-.control-panel {
-  position: absolute;
-  top: 15px;
-  left: 15px;
-  z-index: 100;
-}
-
-.map-container {
-  position: relative;
-  width: 100%;
-  height: 100%;
-}
-
-.map-background {
-  position: absolute;
-  top: 0;
+<style>
+/* 移动端操作提示 */
+.mobile-tips {
+  position: fixed;
+  bottom: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
-  background-image: url('background.jpg');
-  background-size: cover;
-  background-position: center;
+  right: 0;
+  background-color: rgba(76, 175, 80, 0.9);
+  color: white;
+  padding: 10px;
+  font-size: 14px;
+  text-align: center;
+  z-index: 1000;
+  display: flex;
+  justify-content: space-around;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.2);
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.close-tips-btn {
+  position: absolute;
+  top: 5px;
+  right: 10px;
+  background: none;
+  border: none;
+  color: white;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   opacity: 0.8;
 }
 
-/* 地图标记样式 */
-.map-marker {
-  position: absolute;
-  transform: translate(-50%, -50%);
-  cursor: pointer;
-  z-index: 10;
-  /* 增加鼠标区域，提升用户体验 */
-  padding: 5px;
+.close-tips-btn:hover {
+  opacity: 1;
 }
 
-.marker-icon {
-  width: 32px;
-  height: 32px;
+/* 加载状态 */
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.9);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #4caf50;
   border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
-  transition: all 0.3s ease;
-  background-color: white;
-  padding: 5px;
-  border: 2px solid transparent;
+  animation: spin 1s linear infinite;
 }
 
-.marker-icon svg {
-  width: 100%;
-  height: 100%;
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
-.hotel-icon {
-  border-color: #3399ff;
-}
-
-.spot-icon {
-  border-color: #18cc73;
-}
-
-.transportation-icon {
-  border-color: #000000;
-}
-
-.marker-selected .marker-icon {
-  transform: scale(1.2);
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
-  background-color: #f0fff0;
-}
-
-.map-marker {
-  transition: transform 0.3s ease;
-}
-
-.map-marker:hover {
-  z-index: 20; /* 悬停时提高z-index */
-}
-
-.marker-selected {
-  z-index: 25;
-}
-
-/* 标记工具提示 */
-.marker-tooltip {
-  position: absolute;
-  top: 110%;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 150px;
-  padding: 10px;
-  background-color: white;
-  border-radius: 6px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.3s;
-  z-index: 30;
-  pointer-events: none; /* 默认情况下不接受鼠标事件 */
-}
-
-/* 针对靠边缘的标记调整提示框位置 */
-.tooltip-left {
-  left: -50%;
-  transform: translateX(0);
-}
-
-.tooltip-top {
-  top: auto;
-  bottom: 110%;
-}
-
-/* 只有在悬停或标记被选中时才显示tooltip */
-.map-marker:hover .marker-tooltip,
-.marker-selected .marker-tooltip {
-  opacity: 1;
-  visibility: visible;
-  pointer-events: auto; /* 在显示时允许鼠标交互 */
-}
-
-/* 确保即使鼠标移动到tooltip上也能保持显示状态 */
-.marker-tooltip:hover {
-  opacity: 1;
-  visibility: visible;
-}
-
-.marker-tooltip h3 {
-  margin: 0 0 8px;
-  font-size: 14px;
-  color: #4caf50;
-}
-
-.marker-tooltip p {
-  margin: 4px 0;
-  font-size: 12px;
-  color: #555;
-}
-
-/* 右侧面板样式 */
-.right-panel {
-  flex: 1;
-  background-color: white;
-  box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
-  overflow-y: auto;
-}
-
-.plan-header {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 20px;
-  background-color: #4caf50;
+/* 离线提示 */
+.offline-notice {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background-color: rgba(255, 152, 0, 0.9);
   color: white;
-}
-
-.plan-header h2 {
-  margin: 0;
-  font-size: 1.3em;
-}
-
-.plan-content {
-  padding: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 200px;
-}
-
-.empty-plan-message {
-  color: #999;
-  font-style: italic;
+  padding: 8px;
+  font-size: 13px;
   text-align: center;
-  padding: 20px;
+  z-index: 2000;
 }
 
-/* 适配不同屏幕尺寸 */
+/* 错误提示 */
+.error-notice {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background-color: rgba(244, 67, 54, 0.9);
+  color: white;
+  padding: 8px;
+  font-size: 13px;
+  text-align: center;
+  z-index: 2000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+}
+
+.error-notice button {
+  background-color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  color: #f44336;
+}
+
+/* 移动设备优化样式 */
 @media (max-width: 768px) {
-  .home {
-    flex-direction: column;
+  /* 这里可以添加移动设备特有的样式 */
+}
+
+/* 支持暗模式 */
+@media (prefers-color-scheme: dark) {
+  .loading-overlay {
+    background-color: rgba(18, 18, 18, 0.9);
+  }
+
+  .loading-overlay p {
+    color: #e0e0e0;
+  }
+
+  .loading-spinner {
+    border: 3px solid #333333;
+    border-top: 3px solid #4caf50;
+  }
+}
+
+.mobile-tips p {
+  margin: 0;
+  padding: 5px 0;
+}
+
+@media (min-width: 769px) {
+  .mobile-tips {
+    display: none;
+  }
+}
+
+.visual-feedback {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(76, 175, 80, 0.15);
+  z-index: 9000;
+  pointer-events: none;
+  animation: flashFeedback 0.5s ease-out;
+}
+
+@keyframes flashFeedback {
+  0% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
   }
 }
 </style>

@@ -1,0 +1,142 @@
+.home {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+  position: relative;
+  background-color: #f5f5f5;
+  touch-action: manipulation; /* 优化移动端触摸体验，减少延迟 */
+}
+
+/* 全局优化触摸体验 */
+* {
+  -webkit-tap-highlight-color: transparent; /* 移除移动端点击时的高亮 */
+  box-sizing: border-box;
+}
+
+/* 页面滚动优化 */
+html,
+body {
+  overflow: hidden;
+  overscroll-behavior: none; /* 防止浏览器过度滚动行为 */
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  touch-action: manipulation;
+}
+
+/* 按钮和交互元素触摸优化 */
+button,
+.clickable {
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* 响应式样式 */
+@media (max-width: 768px) {
+  .home {
+    flex-direction: column;
+  }
+
+  /* 优化移动端地图和列表比例 */
+  .left-panel {
+    height: 60vh !important; /* 确保地图在移动端有足够但不过大的空间 */
+  }
+
+  .right-panel {
+    height: 40vh !important; /* 剩余空间给清单 */
+    padding: 12px !important; /* 减少内边距，增加可用空间 */
+  }
+
+  /* 移动端视图优化 */
+  .panel-header {
+    padding-bottom: 8px !important;
+    margin-bottom: 10px !important;
+  }
+
+  .panel-header h2 {
+    font-size: 1rem !important;
+  }
+
+  /* 确保移动设备上清单项更紧凑 */
+  .plan-item {
+    padding: 8px !important;
+    margin-bottom: 6px !important;
+  }
+
+  .plan-item-info h4 {
+    font-size: 0.9rem !important;
+  }
+
+  .plan-item-info p {
+    font-size: 0.75rem !important;
+  }
+}
+
+/* 确保提示框在地图边缘正确显示 */
+@media (max-width: 480px) {
+  .marker-tooltip {
+    width: 170px;
+    max-width: 80vw;
+    padding: 8px !important;
+  }
+
+  .tooltip-left,
+  .tooltip-top {
+    max-width: 70vw;
+  }
+
+  /* 小屏幕设备的操作提示优化 */
+  .mobile-tips {
+    padding: 5px !important;
+    font-size: 12px !important;
+  }
+
+  .mobile-tips p {
+    padding: 3px 0 !important;
+  }
+}
+
+/* 添加安全区域支持(针对刘海屏/底部操作条) */
+@supports (padding: max(0px)) {
+  .home {
+    padding-left: max(env(safe-area-inset-left), 0px);
+    padding-right: max(env(safe-area-inset-right), 0px);
+  }
+
+  .mobile-tips {
+    padding-bottom: max(env(safe-area-inset-bottom), 10px) !important;
+  }
+}
+
+/* 改进暗模式支持 */
+@media (prefers-color-scheme: dark) {
+  body {
+    background-color: #121212;
+    color: #e0e0e0;
+  }
+
+  .right-panel {
+    background-color: #1e1e1e !important;
+    border-left-color: #333 !important;
+  }
+
+  .plan-item {
+    background-color: #2a2a2a !important;
+  }
+
+  .plan-item:hover {
+    background-color: #303030 !important;
+  }
+
+  .plan-item-info h4 {
+    color: #e0e0e0 !important;
+  }
+
+  .plan-item-info p {
+    color: #aaaaaa !important;
+  }
+}
