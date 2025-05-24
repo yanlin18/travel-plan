@@ -4,6 +4,7 @@ import IconHotel from './icons/IconHotel.vue'
 import IconSpot from './icons/IconSpot.vue'
 import IconTransportation from './icons/IconTransportation.vue'
 import { ref, inject, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
+import { useRouter } from 'vue-router'
 
 const props = defineProps<{
   type: 'hotel' | 'spot' | 'transportation'
@@ -15,6 +16,8 @@ const emit = defineEmits<{
   (e: 'toggleSelect', type: string, item: Hotel | Spot | Transportation, event: Event): void
   (e: 'addToPlan', type: string, item: Hotel | Spot | Transportation): void
 }>()
+
+const router = useRouter()
 
 // 注入用户交互标记函数
 const markUserInteraction = inject('markUserInteraction', () => {
@@ -39,6 +42,13 @@ const handleAddToPlan = (event: Event) => {
   event.stopPropagation()
   provideVisualFeedback()
   emit('addToPlan', props.type, props.item)
+}
+
+// 处理查看详情按钮点击
+const handleViewDetail = (event: Event) => {
+  markUserInteraction()
+  event.stopPropagation()
+  router.push(`/detail/${props.type}/${props.item.id}`)
 }
 
 // 获取显示名称
@@ -181,9 +191,13 @@ onBeforeUnmount(() => {
         <p>频率: {{ (item as Transportation).frequency }}</p>
       </template>
 
-      <button class="add-to-plan-btn" @click.stop="handleAddToPlan">
-        <span class="add-icon">+</span> 加入行程
-      </button>
+      <div class="button-row">
+        <button class="add-to-plan-btn" @click.stop="handleAddToPlan">
+          <span class="add-icon">+</span> 加入行程
+        </button>
+
+        <button class="view-detail-btn" @click.stop="handleViewDetail">详细信息</button>
+      </div>
 
       <button class="close-tooltip-btn" @click.stop="$emit('toggleSelect', type, item, $event)">
         ×
@@ -335,11 +349,17 @@ onBeforeUnmount(() => {
   color: #333;
 }
 
+/* 按钮行布局 */
+.button-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+
 /* 加入行程按钮样式 */
 .add-to-plan-btn {
-  margin-top: 14px;
-  width: 100%;
-  padding: 10px 12px;
+  flex: 1;
+  padding: 10px 8px;
   background-color: #3399ff;
   color: white;
   border: none;
@@ -350,6 +370,7 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   transition: all 0.2s;
+  font-size: 0.85rem;
 }
 
 .add-to-plan-btn:hover {
@@ -365,9 +386,38 @@ onBeforeUnmount(() => {
 }
 
 .add-icon {
-  margin-right: 6px;
+  margin-right: 4px;
   font-size: 14px;
   font-weight: bold;
+}
+
+/* 查看详情按钮样式 */
+.view-detail-btn {
+  flex: 1;
+  padding: 10px 8px;
+  background-color: #20c997;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  font-size: 0.85rem;
+}
+
+.view-detail-btn:hover {
+  background-color: #1cbf94;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.view-detail-btn:active {
+  background-color: #17a085;
+  transform: translateY(1px);
+  box-shadow: none;
 }
 
 /* 触摸设备上的悬停支持 */
@@ -438,6 +488,18 @@ onBeforeUnmount(() => {
 
   .add-to-plan-btn:active {
     background-color: #3377ee;
+  }
+
+  .view-detail-btn {
+    background-color: #20c997;
+  }
+
+  .view-detail-btn:hover {
+    background-color: #1cbf94;
+  }
+
+  .view-detail-btn:active {
+    background-color: #17a085;
   }
 }
 </style>

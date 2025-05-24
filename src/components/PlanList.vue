@@ -1037,4 +1037,166 @@ onMounted(() => {
     transition: none !important;
   }
 }
+
+/* 暗黑模式支持 */
+@media (prefers-color-scheme: dark) {
+  .right-panel {
+    background-color: #1e1e1e;
+    color: #e0e0e0;
+    border-left-color: #333;
+  }
+
+  .panel-header {
+    background-color: #2d2d2d;
+    color: #fff;
+    border-bottom-color: #404040;
+  }
+
+  .panel-header h2 {
+    color: #fff;
+  }
+
+  .toggle-plan-btn {
+    background-color: #333;
+    color: #e0e0e0;
+    border-color: #555;
+  }
+
+  .toggle-plan-btn:hover {
+    background-color: #404040;
+    color: #fff;
+  }
+
+  .count-badge {
+    background-color: #4488ff;
+    color: #fff;
+  }
+
+  .panel-content {
+    background-color: #1e1e1e;
+  }
+
+  .empty-plan {
+    color: #aaa;
+  }
+
+  .plan-item {
+    background-color: #2d2d2d;
+    color: #e0e0e0;
+    border-left-color: inherit; /* 保持各自类型的颜色 */
+  }
+
+  .plan-item:hover {
+    background-color: #3d3d3d;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+  }
+
+  .plan-item.dragging {
+    background-color: #404040;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+  }
+
+  .plan-item-icon {
+    background-color: #333;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  }
+
+  .plan-item-info h4 {
+    color: #fff;
+  }
+
+  .plan-item-info p {
+    color: #bbb;
+  }
+
+  .remove-item-btn {
+    color: #ff6b6b;
+  }
+
+  .remove-item-btn:hover {
+    color: #ff5252;
+  }
+
+  .drag-handle {
+    color: #777;
+  }
+
+  .plan-actions {
+    border-top-color: #404040;
+  }
+
+  .clear-btn {
+    background-color: #333;
+    color: #bbb;
+  }
+
+  .clear-btn:hover {
+    background-color: #404040;
+    color: #e0e0e0;
+  }
+
+  .clear-btn:disabled {
+    background-color: #222;
+    color: #555;
+  }
+
+  .save-btn {
+    background-color: #45a049;
+    color: #fff;
+  }
+
+  .save-btn:hover {
+    background-color: #4caf50;
+  }
+
+  .confirm-dialog {
+    background-color: #2d2d2d;
+    color: #e0e0e0;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.3);
+  }
+
+  .confirm-buttons button:first-child {
+    background-color: #333;
+    color: #bbb;
+  }
+
+  .confirm-buttons button:first-child:hover {
+    background-color: #404040;
+    color: #e0e0e0;
+  }
+
+  .confirm-yes {
+    background-color: #ff5252;
+    color: #fff;
+  }
+
+  .confirm-yes:hover {
+    background-color: #ff6b6b;
+  }
+
+  /* 暗黑模式下的酒店、景点、交通颜色保持一致 */
+  .item-hotel {
+    border-left-color: #4488ff;
+  }
+
+  .item-spot {
+    border-left-color: #2de58a;
+  }
+
+  .item-transport {
+    border-left-color: #aaaaaa;
+  }
+
+  .hotel-color {
+    border-color: #4488ff;
+  }
+
+  .spot-color {
+    border-color: #2de58a;
+  }
+
+  .transport-color {
+    border-color: #aaaaaa;
+  }
+}
 </style>

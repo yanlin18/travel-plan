@@ -10,6 +10,13 @@ export interface Hotel {
   location: string
   price: string
   position: Position
+  description: string
+  images: string[]
+  amenities: string[]
+  checkIn: string
+  checkOut: string
+  contact: string
+  website?: string
 }
 
 export interface Spot {
@@ -18,6 +25,13 @@ export interface Spot {
   location: string
   rating: number
   position: Position
+  description: string
+  images: string[]
+  openingHours: string
+  ticketPrice: string
+  features: string[]
+  contact: string
+  website?: string
 }
 
 export interface Transportation {
@@ -26,6 +40,13 @@ export interface Transportation {
   route: string
   frequency: string
   position: Position
+  description: string
+  images: string[]
+  operatingHours: string
+  ticketPrice: string
+  stations: string[]
+  contact: string
+  website?: string
 }
 
 // 统一计划项类型
