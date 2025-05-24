@@ -593,8 +593,8 @@ onMounted(() => {
     <div v-if="isExpanded" class="panel-content">
       <!-- 空清单提示 -->
       <div v-if="planItems.items.length === 0" class="empty-plan">
-        <p>您的旅游清单还是空的</p>
-        <p>将地图上的图标拖拽到这里，即可开始规划旅行</p>
+        <p style="font-size: 18px;">您的旅游清单还是空的</p>
+        <p style="font-size: 18px;">赶紧开始规划旅行吧</p>
       </div>
 
       <!-- 清单项目列表 -->
