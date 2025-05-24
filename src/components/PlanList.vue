@@ -655,7 +655,7 @@ onMounted(() => {
         </button>
         <button class="plan-action-btn save-btn" @click="$emit('savePlan')">保存</button>
         <div v-if="showConfirm" class="confirm-dialog">
-          <p>确定要清空所有项目吗？</p>
+          <p style="font-size: 18px;">确定要清空所有项目吗？</p>
           <div class="confirm-buttons">
             <button @click="cancelClear">取消</button>
             <button class="confirm-yes" @click="doClear">确定</button>
