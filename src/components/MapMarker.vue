@@ -162,6 +162,12 @@ onBeforeUnmount(() => {
       <IconSpot v-else-if="type === 'spot'" />
       <IconTransportation v-else-if="type === 'transportation'" />
     </div>
+
+    <!-- 标记名称标签 -->
+    <div class="marker-label" :class="`${type}-label`">
+      {{ getItemName() }}
+    </div>
+
     <div
       v-if="isSelected"
       ref="tooltipEl"
@@ -271,6 +277,49 @@ onBeforeUnmount(() => {
 /* 交通标记样式 */
 .transportation-icon {
   border: 3px solid #000000;
+}
+
+/* 标记名称标签样式 */
+.marker-label {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 4px;
+  padding: 2px 6px;
+  background-color: rgba(255, 255, 255, 0.9);
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 400;
+  color: #333;
+  white-space: nowrap;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+  z-index: 1;
+  opacity: 0.9;
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  pointer-events: none; /* 防止标签触发点击事件 */
+  user-select: none; /* 防止文字被选中 */
+}
+
+/* 不同类型标记的标签颜色 */
+.hotel-label {
+  border-left: 2px solid #3399ff;
+}
+
+.spot-label {
+  border-left: 2px solid #18cc73;
+}
+
+.transportation-label {
+  border-left: 2px solid #000000;
+}
+
+/* 选中状态下的标签样式 - 保持简洁 */
+.marker-selected .marker-label {
+  opacity: 1;
 }
 
 /* 提示框样式 */
@@ -433,6 +482,11 @@ onBeforeUnmount(() => {
       0 4px 12px rgba(0, 0, 0, 0.4),
       0 0 0 2px rgba(255, 255, 255, 0.6);
   }
+
+  /* 悬停时标签效果 */
+  .map-marker:hover .marker-label {
+    opacity: 1;
+  }
 }
 
 /* 暗模式支持 */
@@ -500,6 +554,38 @@ onBeforeUnmount(() => {
 
   .view-detail-btn:active {
     background-color: #17a085;
+  }
+
+  /* 暗模式标签样式 */
+  .marker-label {
+    background-color: rgba(45, 45, 45, 0.9);
+    color: #eee;
+    border-color: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  }
+
+  .marker-selected .marker-label {
+    opacity: 1;
+  }
+
+  /* 暗模式下不同类型标记的标签颜色 */
+  .hotel-label {
+    border-left-color: #4488ff;
+  }
+
+  .spot-label {
+    border-left-color: #2de58a;
+  }
+
+  .transportation-label {
+    border-left-color: #aaaaaa;
+  }
+
+  /* 暗模式下的悬停效果 */
+  @media (hover: hover) {
+    .map-marker:hover .marker-label {
+      opacity: 1;
+    }
   }
 }
 </style>

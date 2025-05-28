@@ -526,6 +526,32 @@ const calculateRoutePath = (): RoutePathResult => {
 // 添加计算属性
 const routePathData = computed(() => calculateRoutePath())
 
+// 搜索框相关变量
+const searchQuery = ref('')
+const isSearchFocused = ref(false)
+
+// 处理搜索输入
+const handleSearchInput = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  searchQuery.value = target.value
+  // 这里可以后续添加搜索功能
+  console.log('搜索内容:', searchQuery.value)
+}
+
+// 处理搜索框焦点事件
+const handleSearchFocus = () => {
+  isSearchFocused.value = true
+}
+
+const handleSearchBlur = () => {
+  isSearchFocused.value = false
+}
+
+// 清空搜索
+const clearSearch = () => {
+  searchQuery.value = ''
+}
+
 // 监听事件和清理
 onMounted(() => {
   if (mapContainer.value) {
@@ -581,6 +607,35 @@ onBeforeUnmount(() => {
 
     <!-- 地图容器 -->
     <div class="map-container" @click="$emit('clearSelection')" ref="mapContainer">
+      <!-- 右上角搜索框 -->
+      <div class="search-panel">
+        <div class="search-box" :class="{ 'search-focused': isSearchFocused }">
+          <svg class="search-icon" viewBox="0 0 24 24" width="18" height="18">
+            <path
+              fill="currentColor"
+              d="M9.5,3A6.5,6.5 0 0,1 16,9.5C16,11.11 15.41,12.59 14.44,13.73L14.71,14H15.5L20.5,19L19,20.5L14,15.5V14.71L13.73,14.44C12.59,15.41 11.11,16 9.5,16A6.5,6.5 0 0,1 3,9.5A6.5,6.5 0 0,1 9.5,3M9.5,5C7,5 5,7 5,9.5C5,12 7,14 9.5,14C12,14 14,12 14,9.5C14,7 12,5 9.5,5Z"
+            />
+          </svg>
+          <input
+            type="text"
+            v-model="searchQuery"
+            placeholder="搜索酒店、景点、交通..."
+            class="search-input"
+            @input="handleSearchInput"
+            @focus="handleSearchFocus"
+            @blur="handleSearchBlur"
+          />
+          <button v-if="searchQuery" class="clear-search-btn" @click="clearSearch">
+            <svg viewBox="0 0 24 24" width="16" height="16">
+              <path
+                fill="currentColor"
+                d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"
+              />
+            </svg>
+          </button>
+        </div>
+      </div>
+
       <!-- 地图背景 -->
       <div
         class="map-inner"
@@ -760,6 +815,87 @@ onBeforeUnmount(() => {
   gap: 12px;
 }
 
+/* 搜索框面板样式 */
+.search-panel {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 10;
+}
+
+.search-box {
+  display: flex;
+  align-items: center;
+  background-color: white;
+  border-radius: 25px;
+  padding: 8px 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+  width: 280px;
+  max-width: calc(100vw - 100px);
+}
+
+.search-box.search-focused {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  border-color: #3399ff;
+  transform: translateY(-1px);
+}
+
+.search-icon {
+  color: #666;
+  margin-right: 8px;
+  flex-shrink: 0;
+  transition: color 0.2s;
+}
+
+.search-focused .search-icon {
+  color: #3399ff;
+}
+
+.search-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 14px;
+  color: #333;
+  background: transparent;
+  min-width: 0;
+}
+
+.search-input::placeholder {
+  color: #999;
+  transition: color 0.2s;
+}
+
+.search-focused .search-input::placeholder {
+  color: #bbb;
+}
+
+.clear-search-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  margin-left: 8px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #666;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.clear-search-btn:hover {
+  background-color: #f0f0f0;
+  color: #333;
+}
+
+.clear-search-btn:active {
+  transform: scale(0.95);
+}
+
 .reset-map-btn {
   width: 42px;
   height: 42px;
@@ -826,6 +962,22 @@ onBeforeUnmount(() => {
     width: 38px;
     height: 38px;
   }
+
+  /* 移动端搜索框样式 */
+  .search-panel {
+    top: 10px;
+    right: 10px;
+  }
+
+  .search-box {
+    width: 240px;
+    max-width: calc(100vw - 80px);
+    padding: 6px 12px;
+  }
+
+  .search-input {
+    font-size: 13px;
+  }
 }
 
 @media (prefers-color-scheme: dark) {
@@ -856,6 +1008,78 @@ onBeforeUnmount(() => {
 
   .map-controls-info {
     background-color: rgba(0, 0, 0, 0.7);
+  }
+
+  /* 暗色模式搜索框样式 */
+  .search-box {
+    background-color: #2d2d2d;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  }
+
+  .search-box.search-focused {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    border-color: #4488ff;
+  }
+
+  .search-icon {
+    color: #aaa;
+  }
+
+  .search-focused .search-icon {
+    color: #4488ff;
+  }
+
+  .search-input {
+    color: #eee;
+  }
+
+  .search-input::placeholder {
+    color: #777;
+  }
+
+  .search-focused .search-input::placeholder {
+    color: #999;
+  }
+
+  .clear-search-btn {
+    color: #aaa;
+  }
+
+  .clear-search-btn:hover {
+    background-color: #404040;
+    color: #eee;
+  }
+
+  /* 暗色模式路线控制按钮样式 */
+  .route-control-btn {
+    background-color: #333;
+    color: #eee;
+  }
+
+  .route-control-btn.route-active {
+    background-color: #2ecc71;
+    color: white;
+    box-shadow: 0 3px 12px rgba(46, 204, 113, 0.3);
+  }
+
+  .route-path {
+    stroke: #2ecc71;
+  }
+
+  .route-path-shadow {
+    stroke: rgba(0, 0, 0, 0.4);
+  }
+
+  .route-path-dash {
+    stroke: rgba(255, 255, 255, 0.5);
+  }
+
+  .route-point-glow {
+    fill: rgba(46, 204, 113, 0.3);
+  }
+
+  .route-point-marker {
+    fill: #2ecc71;
   }
 }
 
@@ -945,40 +1169,6 @@ onBeforeUnmount(() => {
   background-color: #2ecc71;
   color: white;
   box-shadow: 0 3px 12px rgba(46, 204, 113, 0.3);
-}
-
-/* 暗模式支持 */
-@media (prefers-color-scheme: dark) {
-  .route-control-btn {
-    background-color: #333;
-    color: #eee;
-  }
-
-  .route-control-btn.route-active {
-    background-color: #2ecc71;
-    color: white;
-    box-shadow: 0 3px 12px rgba(46, 204, 113, 0.3);
-  }
-
-  .route-path {
-    stroke: #2ecc71;
-  }
-
-  .route-path-shadow {
-    stroke: rgba(0, 0, 0, 0.4);
-  }
-
-  .route-path-dash {
-    stroke: rgba(255, 255, 255, 0.5);
-  }
-
-  .route-point-glow {
-    fill: rgba(46, 204, 113, 0.3);
-  }
-
-  .route-point-marker {
-    fill: #2ecc71;
-  }
 }
 
 /* 添加中心点样式 */
